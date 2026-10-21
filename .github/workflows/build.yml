@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 编译（用系统自带的 csc.exe）
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: 冒烟测试：--once
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          & "bin\BattWhale.exe" --once 2>&1 | Out-String
+          "exit=$LASTEXITCODE"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: BattWhale
+          path: bin/BattWhale.exe
+          if-no-files-found: error
+
+      - name: 打 tag 时自动发 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bin/BattWhale.exe
+          generate_release_notes: true

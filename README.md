@@ -1,5 +1,7 @@
 # 鲸电量 BattWhale
 
+![build](https://github.com/maomaoHatsune/BattWhale/actions/workflows/build.yml/badge.svg)
+
 常驻 Windows 系统托盘的 2.4G 无线外设电量监视器。只读 HID，不装驱动、不常驻服务、不联网。
 
 ![界面预览](docs/preview.png)
@@ -8,6 +10,12 @@
 - 实测占用：私有内存约 **24 MB**、工作集约 40 MB（WinForms 的固有开销），CPU 空闲时为 0
 - 界面是浅色面板，操作按钮（刷新 / 间隔 / 自启 / 退出）都在面板底部，右键不再弹独立菜单；托盘图标会自动跟随任务栏深浅换描边
 - 托盘图标按最低电量变色（绿 ≥50%、黄 ≥20%、红 <20%），左键或右键都弹出同一个面板
+
+## 下载
+
+不想自己编译的话，直接去 [Releases](https://github.com/maomaoHatsune/BattWhale/releases) 下 `BattWhale.exe`。
+它是未签名的，第一次运行会被 SmartScreen 拦一下（「更多信息 → 仍要运行」），或者用仓库里的
+`build.ps1` 自己编一个、顺手生成 `启动.vbs` 绕开它。
 
 ## 快速开始
 
