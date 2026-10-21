@@ -13,16 +13,18 @@
 
 ```bat
 build.cmd                 :: 或 powershell -ExecutionPolicy Bypass -File build.ps1
-启动.vbs                  :: 常驻托盘（推荐：wscript 启动，绕开 SmartScreen）
-bin\BattWhale.exe         :: 直接跑（exe 没签名，首次会弹 SmartScreen）
+bin\BattWhale.exe         :: 直接跑（exe 没签名，explorer 里首次会弹 SmartScreen）
 bin\BattWhale.exe --once  :: 打印一次电量后退出
 bin\BattWhale.exe --diag  :: 诊断：HID 接口 + 各协议原始回复
 ```
 
-> **关于 SmartScreen**：exe 没有代码签名，explorer 直接启动会被「Windows 已保护你的电脑」拦一次。
-> `启动.vbs` 用 `WScript.Shell.Run` 走 `CreateProcess`，不经过 shell 的那道检查，所以不会弹。
-> 桌面快捷方式和开机自启都已指向它。想彻底不弹只有两条路：买代码签名证书，或关掉
+`build.ps1` 编译完会顺手在根目录生成一个 `启动.vbs`（绝对路径写死）——exe 没有代码签名，
+explorer 直接双击会被「Windows 已保护你的电脑」拦一次；这个启动器用 `WScript.Shell.Run`
+走 `CreateProcess`，不经过 shell 的那道检查，所以不会弹。把它拖到桌面/开始菜单当快捷方式即可。
+
+> 想彻底不弹只有两条路：买代码签名证书，或关掉
 > 「应用和浏览器控制 → 基于声誉的保护 → 检查应用和文件」（需要管理员）。
+> 注：`启动.vbs` 带本机绝对路径，所以没有进仓库，每次编译自动生成。
 
 开机自启在面板底部的「自启」按钮里开关（写 `HKCU\...\Run`，不需要管理员）。
 
