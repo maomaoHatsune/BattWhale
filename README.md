@@ -84,6 +84,36 @@ bin\BattWhale.exe --traytest 托盘自检：弹窗显示 session / integrity / N
 设置与上次读数会依次尝试 `%APPDATA%`、`%LOCALAPPDATA%`、exe 目录、`%TEMP%`，
 用第一个真的能写的；实际用了哪个会写进 `battwhale.log` 的「数据目录」那行。
 
+## 想支持别的外设？拿自己的设备再跑一遍
+
+这个项目不是「通用驱动」。上面三种读法都是拿**具体设备**的实机报文一条条对出来的：
+罗技的 feature 索引、雷蛇 90 字节报文里 `arg1` 的位置、XInput 的档位映射，全是逆出来的，
+不是照文档抄的。所以换一把新键盘 / 新鼠标，**大概率不能开箱即用**，得用你自己的设备重跑一遍。
+
+流程（这正是 AI agent 最擅长的活）：
+
+1. `bin\BattWhale.exe --hidscan` —— 列出所有 HID 接口：VID/PID、usage page、设备路径；
+2. `bin\BattWhale.exe --hidread <路径>` —— 把该接口的 feature report 原始字节打出来，
+   协议不明的设备就靠这一步把「报文长什么样」记下来；
+3. `bin\BattWhale.exe --diag` —— 看现有三种协议在你设备上的应答。回 `0x05` / `0x07`
+   之类错误码就说明这条路不通，得换方向（雷蛇当年就是全 `0x05`，最后顺着它的驱动才通）；
+4. 把 1–3 的原始输出、设备型号、驱动版本一起丢给 agent，让它在 `src/providers/` 里
+   照 `LogitechProvider` / `RazerProvider` 的结构补一个 provider；
+5. `build.ps1` 编一版，`--once` 验证读数。
+
+可以直接把这段提示词给它：
+
+> 我有一台 <品牌型号>（`VID_xxxx:PID_xxxx`），想读它的电量。下面是 `--hidscan` / `--hidread` /
+> `--diag` 的原始输出：<粘贴>。仓库里已有 HID++、RZCONTROL、XInput 三种实现，请照着结构加一个
+> provider。要求：只读、绝不写设备、失败不能影响现有设备；先告诉我缺哪些信息，再动代码。
+
+几条踩过的经验，能少绕两天：
+
+- 键盘/鼠标顶层集合在 Win10 1803+ 打不开，用**零权限句柄** + `HidD_Get/SetFeature`；
+- 有的厂商把 feature report 虚拟化在自己的驱动里（雷蛇就是），那就得顺着驱动暴露的控制设备走；
+- HID++ 设备可能对多个索引都应答，记得去重（见上面那个坑）；
+- 厂商私有通道（比如某些手柄的 `0xFFA0`）没有公开文档，只能靠 `--hidread` 抓包 + 试错。
+
 ## 它是怎么读的
 
 | 协议 | 用途 | 关键点 |
