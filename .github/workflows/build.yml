@@ -15,14 +15,14 @@ jobs:
 
       - name: 编译（用系统自带的 csc.exe）
         shell: pwsh
-        run: ./build.ps1
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File ./build.ps1
 
       - name: 冒烟测试：--once
         shell: pwsh
-        continue-on-error: true
         run: |
-          & "bin\BattWhale.exe" --once 2>&1 | Out-String
-          "exit=$LASTEXITCODE"
+          $out = & ".\bin\BattWhale.exe" --once 2>&1 | Out-String
+          Write-Host $out
+          if (-not (Test-Path ".\bin\BattWhale.exe")) { throw "没有产物" }
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
