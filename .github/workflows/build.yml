@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write   # 打 tag 时要用它发 Release
     steps:
       - uses: actions/checkout@v4
 
