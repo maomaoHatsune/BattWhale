@@ -38,4 +38,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: bin/BattWhale.exe
+          body_path: .github/release-body.md
           generate_release_notes: true
