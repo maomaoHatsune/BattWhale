@@ -8,6 +8,9 @@ namespace BattWhale
 {
     internal static class Program
     {
+        /// <summary>Shown by --help; keep in step with the git tag.</summary>
+        public const string Version = "1.0.1";
+
         [STAThread]
         private static int Main(string[] args)
         {
@@ -73,12 +76,12 @@ namespace BattWhale
                 if (command == "--help" || command == "-h")
                 {
                     ConsoleHost.Attach();
-                    Console.WriteLine("BattWhale 鲸电量");
-                    Console.WriteLine("  直接运行      常驻托盘");
-                    Console.WriteLine("  --once       打印一次电量后退出");
-                    Console.WriteLine("  --diag       打印诊断信息（HID 接口、协议回复）");
-                    Console.WriteLine("  --hidscan xx 扫描该 VID 的 feature report");
-                    Console.WriteLine("  --hidread xx 监听该 VID 的输入报文");
+                    Console.WriteLine("BattWhale " + Version);
+                    Console.WriteLine("  (no args)    stay in the tray / 常驻托盘");
+                    Console.WriteLine("  --once       print battery readings once / 打印一次电量后退出");
+                    Console.WriteLine("  --diag       HID interfaces + raw protocol replies / 诊断");
+                    Console.WriteLine("  --hidscan xx scan feature reports of that VID / 扫描 feature report");
+                    Console.WriteLine("  --hidread xx dump input reports of that VID / 监听输入报文");
                     return 0;
                 }
             }
