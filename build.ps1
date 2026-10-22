@@ -41,6 +41,15 @@ $sources = Get-ChildItem -Path $src -Recurse -Filter *.cs | ForEach-Object { $_.
 $out = Join-Path $bin $Out
 if (Test-Path $out) { Remove-Item $out -Force }
 
+# --- WinRT metadata for Windows.Gaming.Input (controller battery) ---
+$md = Join-Path $env:WINDIR 'System32\WinMetadata'
+$winmd = @()
+foreach ($n in @('Windows.Foundation', 'Windows.Gaming', 'Windows.Devices', 'Windows.System')) {
+    $f = Join-Path $md ($n + '.winmd')
+    if (-not (Test-Path $f)) { throw "WinRT metadata not found: $f (Windows 10/11 is required)" }
+    $winmd += "/reference:$f"
+}
+
 $arguments = @(
     '/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', '/debug-',
     '/utf8output', '/warn:4',
@@ -49,8 +58,11 @@ $arguments = @(
     '/reference:System.dll',
     '/reference:System.Core.dll',
     '/reference:System.Drawing.dll',
-    '/reference:System.Windows.Forms.dll'
-) + $sources
+    '/reference:System.Windows.Forms.dll',
+    '/reference:System.Runtime.dll',
+    '/reference:System.ObjectModel.dll',
+    '/reference:System.Runtime.WindowsRuntime.dll'
+) + $winmd + $sources
 
 & $csc $arguments
 if ($LASTEXITCODE -ne 0) { throw "build failed (exit $LASTEXITCODE)" }

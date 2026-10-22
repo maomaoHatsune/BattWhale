@@ -209,6 +209,7 @@ namespace BattWhale
             foreach (BatteryReading r in sink)
                 Console.WriteLine(string.Format("  {0}: {1} ({2})", r.Name, r.Percent >= 0 ? r.Percent + "%" : "未知", r.Note));
             Console.WriteLine("  原始: " + ControllerProvider.LastRaw);
+            Console.WriteLine("  WGI:  " + ControllerProvider.LastWgiRaw);
         }
 
         /// <summary>Brute-force feature report scan, used while reverse engineering a device.</summary>

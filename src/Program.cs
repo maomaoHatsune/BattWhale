@@ -9,7 +9,7 @@ namespace BattWhale
     internal static class Program
     {
         /// <summary>Shown by --help; keep in step with the git tag.</summary>
-        public const string Version = "1.0.1";
+        public const string Version = "1.0.2";
 
         [STAThread]
         private static int Main(string[] args)

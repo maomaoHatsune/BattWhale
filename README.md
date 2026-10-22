@@ -26,7 +26,7 @@ Read-only HID: no driver, no background service, no network access.
 |---|---|---|
 | Logitech (G517 LS TKL, …) | HID++ 2.0, feature `0x1004` | receiver and wired both work; reports charging |
 | Razer (Orochi V2, …) | Razer's own RZCONTROL control device | no admin needed; level only |
-| Xbox-mode controllers (GameSir, …) | `XInputGetBatteryInformation` | coarse buckets (empty/low/medium/full) |
+| Xbox-mode controllers (GameSir, …) | `Windows.Gaming.Input` battery report | exact percentage and charging state; XInput's four buckets as the fallback |
 
 ### Run it
 
@@ -91,7 +91,7 @@ MIT.
 |---|---|---|
 | 罗技（G517 LS TKL 等） | HID++ 2.0，feature `0x1004` | 接收器和有线都行，能报充电状态 |
 | 雷蛇（八岐大蛇 V2 等） | 雷云自己的 RZCONTROL 控制设备 | 不需要管理员，只能读电量 |
-| Xbox 模式手柄（盖世小鸡等） | `XInputGetBatteryInformation` | 只有档位（空/低/中/满），不精确到百分比 |
+| Xbox 模式手柄（盖世小鸡等） | `Windows.Gaming.Input` 的电量报告 | 精确百分比 + 充电状态，XInput 的四个档位作兜底 |
 
 ### 怎么用
 
