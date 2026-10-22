@@ -221,7 +221,17 @@ namespace BattWhale
                 Application.Exit();
                 Environment.Exit(0);   // never leave a zombie holding the single-instance mutex
             };
-            panel.FormClosed += delegate { _flyout = null; };
+            panel.FormClosed += delegate
+            {
+                _flyout = null;
+                // Degraded (no tray icon): do not linger. A headless instance would keep the
+                // single-instance mutex and make every later launch look like a no-op.
+                if (!_tray.Added)
+                {
+                    ExitThread();
+                    Environment.Exit(0);
+                }
+            };
             _flyout = panel;
             panel.ShowNearTray();
         }
