@@ -122,22 +122,12 @@ namespace BattWhale
             }
         }
 
-        /// <summary>Prefer the script launcher: wscript.exe is signed, so SmartScreen does
-        /// not block the unsigned exe it starts with CreateProcess.</summary>
+        /// <summary>Run the exe directly. The vbs launcher only helps against the manual
+        /// double-click SmartScreen prompt, but at logon it is less reliable (script host
+        /// can be restricted), so autostart must not depend on it.</summary>
         public static string BuildLaunchCommand()
         {
-            string exe = System.Windows.Forms.Application.ExecutablePath;
-            try
-            {
-                string dir = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(exe));
-                string vbs = System.IO.Path.Combine(dir, "启动.vbs");
-                if (System.IO.File.Exists(vbs))
-                    return "wscript.exe \"" + vbs + "\"";
-            }
-            catch (Exception)
-            {
-            }
-            return "\"" + exe + "\"";
+            return "\"" + System.Windows.Forms.Application.ExecutablePath + "\"";
         }
     }
 }

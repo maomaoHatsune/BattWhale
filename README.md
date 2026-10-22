@@ -14,27 +14,23 @@
 ## 下载
 
 不想自己编译的话，直接去 [Releases](https://github.com/maomaoHatsune/BattWhale/releases) 下 `BattWhale.exe`。
-它是未签名的，第一次运行会被 SmartScreen 拦一下（「更多信息 → 仍要运行」），或者用仓库里的
-`build.ps1` 自己编一个、顺手生成 `启动.vbs` 绕开它。
+它是未签名的，双击时 SmartScreen 可能拦一下（点「更多信息 → 仍要运行」即可，之后不再问）。
 
 ## 快速开始
 
 ```bat
 build.cmd                 :: 或 powershell -ExecutionPolicy Bypass -File build.ps1
-bin\BattWhale.exe         :: 直接跑（exe 没签名，explorer 里首次会弹 SmartScreen）
+bin\BattWhale.exe         :: 直接跑（exe 没签名，explorer 里首次可能弹 SmartScreen）
 bin\BattWhale.exe --once  :: 打印一次电量后退出
 bin\BattWhale.exe --diag  :: 诊断：HID 接口 + 各协议原始回复
 ```
 
-`build.ps1` 编译完会顺手在根目录生成一个 `启动.vbs`（绝对路径写死）——exe 没有代码签名，
-explorer 直接双击会被「Windows 已保护你的电脑」拦一次；这个启动器用 `WScript.Shell.Run`
-走 `CreateProcess`，不经过 shell 的那道检查，所以不会弹。把它拖到桌面/开始菜单当快捷方式即可。
+开机自启在面板底部的「自启」按钮里开关：写的是 `HKCU\...\Run`，值是 **exe 的绝对路径**，
+不经过任何脚本宿主，登录时由 explorer 直接 `CreateProcess` 拉起，不需要管理员、也不会被
+SmartScreen 拦（那条检查只挂在 shell 的 `ShellExecute` 路径上）。
 
-> 想彻底不弹只有两条路：买代码签名证书，或关掉
+> 想彻底不弹 SmartScreen 只有两条路：买代码签名证书，或关掉
 > 「应用和浏览器控制 → 基于声誉的保护 → 检查应用和文件」（需要管理员）。
-> 注：`启动.vbs` 带本机绝对路径，所以没有进仓库，每次编译自动生成。
-
-开机自启在面板底部的「自启」按钮里开关（写 `HKCU\...\Run`，不需要管理员）。
 
 再双击一次程序会把已经在运行的面板弹出来，不会再弹「已经在运行」的对话框。
 

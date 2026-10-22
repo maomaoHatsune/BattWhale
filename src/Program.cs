@@ -13,20 +13,12 @@ namespace BattWhale
         {
             string command = args.Length > 0 ? args[0].ToLowerInvariant() : "";
 
-            // Sandboxed launches (e.g. clicking the file card in the chat window) hand us a
-            // low-integrity token, and UIPI then refuses Shell_NotifyIcon. Hand the process
-            // back to Explorer, which runs at medium integrity, so the tray icon can exist.
-            if (args.Length == 0 && Integrity.IsLow() && !RecentlyRelaunched())
-            {
-                // Starting explorer.exe from a sandboxed low-integrity process fails with
-                // 0xc0000142 and pops a system error dialog, so go straight to the one
-                // broker that always works: UAC. Accepting it gives us a normal token and
-                // the tray icon works.
-                if (Integrity.RelaunchElevated(Application.ExecutablePath) &&
-                    Integrity.WaitForOtherInstance(25000))
-                    return 0;
-                // Declined or unavailable: keep running degraded (panel only).
-            }
+            // Sanboxed launches hand us a low-integrity token, where UIPI refuses
+            // Shell_NotifyIcon. Never try to elevate here: at logon that would raise a UAC
+            // prompt and make the autostart entry look broken. Just run degraded (panel only)
+            // and say so in the log.
+            if (args.Length == 0 && Integrity.IsLow())
+                DebugLog.Always("低完整性进程，托盘图标可能注册不上: " + Integrity.Level());
 
             try
             {
