@@ -44,6 +44,9 @@ namespace BattWhale
                 {
                     case BatteryState.Charging: return Strings.Charging;
                     case BatteryState.Full: return Strings.Full;
+                    // Discharging: the big number on the right already shows the percentage, so
+                    // this line says what the device is doing instead of repeating it.
+                    case BatteryState.Discharging: return Note.Length > 0 ? Note : Strings.InUse;
                     case BatteryState.Offline: return Note.Length > 0 ? Note : Strings.Asleep;
                     case BatteryState.Blocked: return Note.Length > 0 ? Note : Strings.Unreadable;
                     default: return Note.Length > 0 ? Note : (Percent >= 0 ? Percent + "%" : Strings.Unknown);

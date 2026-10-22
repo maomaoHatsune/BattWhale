@@ -84,6 +84,7 @@ namespace BattWhale
         // ---- device state ----
         public static string Charging { get { return Pick("充电中", "Charging"); } }
         public static string Full { get { return Pick("已充满", "Full"); } }
+        public static string InUse { get { return Pick("使用中", "In use"); } }
         public static string Asleep { get { return Pick("休眠中", "Asleep"); } }
         public static string Unreadable { get { return Pick("无法读取", "Unreadable"); } }
         public static string Unknown { get { return Pick("未知", "Unknown"); } }
