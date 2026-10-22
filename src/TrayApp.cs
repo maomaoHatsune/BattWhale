@@ -25,6 +25,7 @@ namespace BattWhale
         {
             _showSignal = showSignal;
             _settings = AppSettings.Load();
+            Strings.Current = _settings.Language == "en" ? Lang.En : Lang.Zh;
             _service = new BatteryService();
             _service.Refreshed += OnRefreshed;
 
@@ -116,8 +117,7 @@ namespace BattWhale
             {
                 _settings.HintShown = true;
                 _settings.Save();
-                _tray.Balloon("鲸电量已启动",
-                    "图标在任务栏右下角的 ^ 里，点一下就能看到面板，操作都在面板底部。", false);
+                _tray.Balloon(Strings.FirstRunTitle, Strings.FirstRunText, false);
             }
             if (_flyout != null && !_flyout.IsDisposed)
             {
@@ -150,8 +150,8 @@ namespace BattWhale
         private static string BuildTooltip(List<BatteryReading> readings)
         {
             if (readings.Count == 0)
-                return "鲸电量 · 未发现无线设备";
-            var sb = new StringBuilder("鲸电量");
+                return Strings.TooltipNoDevices;
+            var sb = new StringBuilder(Strings.AppTitle);
             foreach (BatteryReading r in readings)
             {
                 if (sb.Length > 46) break;
@@ -160,7 +160,7 @@ namespace BattWhale
                 if (r.Percent >= 0 && r.IsOnline)
                     sb.Append(r.Percent).Append('%');
                 else
-                    sb.Append(r.State == BatteryState.Offline ? "休眠" : "—");
+                    sb.Append(r.State == BatteryState.Offline ? Strings.AsleepShort : "—");
             }
             string text = sb.ToString();
             return text.Length > 62 ? text.Substring(0, 62) : text;
@@ -183,8 +183,7 @@ namespace BattWhale
                 }
                 if (_lowNotified.Add(r.Key))
                 {
-                    _tray.Balloon("电量偏低",
-                        string.Format("{0} 只剩 {1}%，该充电了。", r.Name, r.Percent), true);
+                    _tray.Balloon(Strings.LowBatteryTitle, Strings.LowBatteryText(r.Name, r.Percent), true);
                 }
             }
         }
@@ -213,6 +212,13 @@ namespace BattWhale
                 _settings.Autostart = panel.AutostartOn;
                 DebugLog.Always("开机自启 = " + panel.AutostartOn);
             };
+            panel.LanguageToggled += delegate
+            {
+                _settings.Language = Strings.Code;
+                _settings.Save();
+                UpdateIcon(VisibleReadings());   // tooltip text follows the language
+                DebugLog.Always("语言 = " + _settings.Language);
+            };
             panel.QuitClicked += delegate
             {
                 DebugLog.Always("面板退出");
@@ -221,17 +227,7 @@ namespace BattWhale
                 Application.Exit();
                 Environment.Exit(0);   // never leave a zombie holding the single-instance mutex
             };
-            panel.FormClosed += delegate
-            {
-                _flyout = null;
-                // Degraded (no tray icon): do not linger. A headless instance would keep the
-                // single-instance mutex and make every later launch look like a no-op.
-                if (!_tray.Added)
-                {
-                    ExitThread();
-                    Environment.Exit(0);
-                }
-            };
+            panel.FormClosed += delegate { _flyout = null; };
             _flyout = panel;
             panel.ShowNearTray();
         }

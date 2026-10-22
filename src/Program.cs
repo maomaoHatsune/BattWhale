@@ -13,12 +13,22 @@ namespace BattWhale
         {
             string command = args.Length > 0 ? args[0].ToLowerInvariant() : "";
 
-            // Sanboxed launches hand us a low-integrity token, where UIPI refuses
-            // Shell_NotifyIcon. Never try to elevate here: at logon that would raise a UAC
-            // prompt and make the autostart entry look broken. Just run degraded (panel only)
-            // and say so in the log.
-            if (args.Length == 0 && Integrity.IsLow())
+            // A sandboxed launch (chat file card, IDE, some terminals) hands us a low-integrity
+            // token, and UIPI then refuses Shell_NotifyIcon with win32=5 - the app runs but has
+            // no tray icon. Hand the process to a normal-token copy and let this one exit.
+            // At logon the Run key starts us at medium integrity, so this never fires there.
+            if (args.Length == 0 && Integrity.IsLow() && !RecentlyRelaunched())
+            {
+                DebugLog.Always("低完整性进程 (" + Integrity.Level() + ")，尝试重新拉起");
+                if (Integrity.RelaunchElevated(Application.ExecutablePath) &&
+                    Integrity.WaitForOtherInstance(20000))
+                    return 0;
+                DebugLog.Always("重新拉起没成功，降级为面板模式");
+            }
+            else if (args.Length == 0 && Integrity.IsLow())
+            {
                 DebugLog.Always("低完整性进程，托盘图标可能注册不上: " + Integrity.Level());
+            }
 
             try
             {
@@ -162,7 +172,10 @@ namespace BattWhale
             readings.Add(pad);
 
             Application.EnableVisualStyles();
+            Strings.Current = AppSettings.Load().Language == "en" ? Lang.En : Lang.Zh;
             var form = new FlyoutForm(readings);
+            form.AutostartOn = AppSettings.AutostartEnabled();
+            form.IntervalSeconds = AppSettings.Load().IntervalSeconds;
             form.Sticky = Array.IndexOf(args, "--stay") >= 0;
             form.ShowNearTray();
             DebugLog.Write("flyout: bounds=" + form.Bounds + " visible=" + form.Visible +

@@ -11,6 +11,7 @@ namespace BattWhale
         public int LowThreshold = 20;
         public bool Autostart;
         public bool HintShown;
+        public string Language = "zh";
         public readonly HashSet<string> Hidden = new HashSet<string>();
 
         private static string Folder
@@ -57,6 +58,9 @@ namespace BattWhale
                         case "hinted":
                             settings.HintShown = value == "1";
                             break;
+                        case "lang":
+                            settings.Language = Strings.FromCode(value);
+                            break;
                     }
                 }
             }
@@ -77,6 +81,7 @@ namespace BattWhale
                 sb.AppendLine("low=" + LowThreshold);
                 sb.AppendLine("hidden=" + string.Join("|", new List<string>(Hidden).ToArray()));
                 sb.AppendLine("hinted=" + (HintShown ? "1" : "0"));
+                sb.AppendLine("lang=" + Language);
                 File.WriteAllText(FilePath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception)

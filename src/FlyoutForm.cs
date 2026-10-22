@@ -22,6 +22,7 @@ namespace BattWhale
         private readonly Rectangle _intervalButton;
         private readonly Rectangle _autostartButton;
         private readonly Rectangle _quitButton;
+        private readonly Rectangle _langButton;
 
         public bool Sticky;
         public bool AutostartOn;
@@ -31,26 +32,31 @@ namespace BattWhale
         public event EventHandler QuitClicked;
         public event EventHandler AutostartToggled;
         public event EventHandler IntervalChanged;
+        public event EventHandler LanguageToggled;
 
         public FlyoutForm(List<BatteryReading> readings)
         {
             _readings = readings;
+            // Style flags must be set before the window handle exists; toggling UserPaint
+            // afterwards leaves the first paints in a half-initialised GDI+ state (that is
+            // what made Graphics.set_SmoothingMode throw "参数无效").
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            DoubleBuffered = true;
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             TopMost = true;
             StartPosition = FormStartPosition.Manual;
-            DoubleBuffered = true;
             BackColor = Palette.Panel;
             int rows = Math.Max(1, Math.Min(readings.Count, 6));
             ClientSize = new Size(Width_, HeaderHeight + rows * RowHeight + FooterHeight + ActionHeight);
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
-                     ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
 
             int y = Height - ActionHeight + 7;
             _refreshButton = new Rectangle(12, y, 66, 26);
             _intervalButton = new Rectangle(84, y, 86, 26);
             _autostartButton = new Rectangle(176, y, 76, 26);
             _quitButton = new Rectangle(258, y, 46, 26);
+            _langButton = new Rectangle(Width_ - 40, 9, 28, 22);
         }
 
         public void ShowNearTray()
@@ -78,9 +84,28 @@ namespace BattWhale
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            try
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                PaintBody(g);
+            }
+            catch (Exception ex)
+            {
+                // A paint exception must never take the whole app down.
+                if (!_paintErrorLogged)
+                {
+                    _paintErrorLogged = true;
+                    DebugLog.Always("面板绘制异常: " + ex.Message + " handle=" + IsHandleCreated +
+                                    " visible=" + Visible + " size=" + ClientSize);
+                }
+            }
+        }
 
+        private bool _paintErrorLogged;
+
+        private void PaintBody(Graphics g)
+        {
             using (var background = new SolidBrush(Palette.Panel))
                 g.FillRectangle(background, ClientRectangle);
             using (var border = new Pen(Palette.Border, 1))
@@ -93,13 +118,14 @@ namespace BattWhale
             using (var text = new SolidBrush(Palette.Text))
             using (var dim = new SolidBrush(Palette.Secondary))
             {
-                g.DrawString("鲸电量", titleFont, text, 14, 12);
-                string summary = _readings.Count == 0 ? "未发现设备" : _readings.Count + " 个设备";
+                g.DrawString(Strings.AppTitle, titleFont, text, 14, 12);
+                string summary = _readings.Count == 0 ? Strings.NoDevices : Strings.DeviceCount(_readings.Count);
                 SizeF summarySize = g.MeasureString(summary, smallFont);
-                g.DrawString(summary, smallFont, dim, Width - summarySize.Width - 14, 16);
+                g.DrawString(summary, smallFont, dim, Width - summarySize.Width - 48, 16);
+                DrawButton(g, _langButton, Strings.LangButton, false, smallFont);
 
                 if (_readings.Count == 0)
-                    g.DrawString("插上 2.4G 接收器，或把无线设备唤醒后再试。", smallFont, dim, 14, HeaderHeight + 8);
+                    g.DrawString(Strings.NoDevicesHint, smallFont, dim, 14, HeaderHeight + 8);
 
                 int y = HeaderHeight;
                 foreach (BatteryReading r in _readings)
@@ -108,13 +134,13 @@ namespace BattWhale
                     y += RowHeight;
                 }
 
-                string footer = DateTime.Now.ToString("HH:mm:ss") + " 刷新 · 左键再次点击收起";
+                string footer = Strings.Footer(DateTime.Now.ToString("HH:mm:ss"));
                 g.DrawString(footer, smallFont, dim, 14, Height - ActionHeight - FooterHeight + 4);
 
-                DrawButton(g, _refreshButton, "刷新", false, smallFont);
-                DrawButton(g, _intervalButton, "间隔 " + FormatInterval(IntervalSeconds), false, smallFont);
-                DrawButton(g, _autostartButton, AutostartOn ? "自启 开" : "自启 关", AutostartOn, smallFont);
-                DrawButton(g, _quitButton, "退出", false, smallFont);
+                DrawButton(g, _refreshButton, Strings.Refresh, false, smallFont);
+                DrawButton(g, _intervalButton, Strings.IntervalLabel(IntervalSeconds), false, smallFont);
+                DrawButton(g, _autostartButton, Strings.AutostartLabel(AutostartOn), AutostartOn, smallFont);
+                DrawButton(g, _quitButton, Strings.Quit, false, smallFont);
             }
         }
 
@@ -216,6 +242,13 @@ namespace BattWhale
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
+            if (_langButton.Contains(e.Location))
+            {
+                Strings.Current = Strings.IsEnglish ? Lang.Zh : Lang.En;
+                Raise(LanguageToggled);
+                Invalidate();
+                return;
+            }
             if (_refreshButton.Contains(e.Location))
             {
                 Raise(RefreshClicked);

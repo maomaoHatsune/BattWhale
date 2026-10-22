@@ -42,11 +42,11 @@ namespace BattWhale
             {
                 switch (State)
                 {
-                    case BatteryState.Charging: return "充电中";
-                    case BatteryState.Full: return "已充满";
-                    case BatteryState.Offline: return Note.Length > 0 ? Note : "休眠中";
-                    case BatteryState.Blocked: return Note.Length > 0 ? Note : "无法读取";
-                    default: return Note.Length > 0 ? Note : (Percent >= 0 ? Percent + "%" : "未知");
+                    case BatteryState.Charging: return Strings.Charging;
+                    case BatteryState.Full: return Strings.Full;
+                    case BatteryState.Offline: return Note.Length > 0 ? Note : Strings.Asleep;
+                    case BatteryState.Blocked: return Note.Length > 0 ? Note : Strings.Unreadable;
+                    default: return Note.Length > 0 ? Note : (Percent >= 0 ? Percent + "%" : Strings.Unknown);
                 }
             }
         }
