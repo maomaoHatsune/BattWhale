@@ -9,3 +9,6 @@ bin/
 *.log
 *.marker
 *.ini
+
+# personal video script, not part of the project
+docs/video-script.md

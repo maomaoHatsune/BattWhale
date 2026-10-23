@@ -18,6 +18,7 @@ namespace BattWhale
 
         private readonly List<BatteryReading> _readings;
         private DateTime _shownAt;
+        private readonly float _scale;
         private readonly Rectangle _refreshButton;
         private readonly Rectangle _intervalButton;
         private readonly Rectangle _autostartButton;
@@ -37,6 +38,7 @@ namespace BattWhale
         public FlyoutForm(List<BatteryReading> readings)
         {
             _readings = readings;
+            _scale = DpiScale();
             // Style flags must be set before the window handle exists; toggling UserPaint
             // afterwards leaves the first paints in a half-initialised GDI+ state (that is
             // what made Graphics.set_SmoothingMode throw "参数无效").
@@ -49,20 +51,52 @@ namespace BattWhale
             StartPosition = FormStartPosition.Manual;
             BackColor = Palette.Panel;
             int rows = Math.Max(1, Math.Min(readings.Count, 6));
-            ClientSize = new Size(Width_, HeaderHeight + rows * RowHeight + FooterHeight + ActionHeight);
+            int logicalHeight = HeaderHeight + rows * RowHeight + FooterHeight + ActionHeight;
+            ClientSize = new Size(S(Width_), S(logicalHeight));
 
-            int y = Height - ActionHeight + 7;
-            _refreshButton = new Rectangle(12, y, 66, 26);
-            _intervalButton = new Rectangle(84, y, 86, 26);
-            _autostartButton = new Rectangle(176, y, 76, 26);
-            _quitButton = new Rectangle(258, y, 46, 26);
-            _langButton = new Rectangle(Width_ - 40, 9, 28, 22);
+            int y = S(logicalHeight - ActionHeight + 7);
+            _refreshButton = new Rectangle(S(12), y, S(66), S(26));
+            _intervalButton = new Rectangle(S(84), y, S(86), S(26));
+            _autostartButton = new Rectangle(S(176), y, S(76), S(26));
+            _quitButton = new Rectangle(S(258), y, S(46), S(26));
+            _langButton = new Rectangle(ClientSize.Width - S(40), S(9), S(28), S(22));
+        }
+
+        /// <summary>Current display scale (1.0 at 96 dpi, 1.5 at 150%).</summary>
+        private static float DpiScale()
+        {
+            try
+            {
+                using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+                    return g.DpiX / 96f;
+            }
+            catch (Exception)
+            {
+                return 1f;
+            }
+        }
+
+        /// <summary>Converts a 96-dpi design pixel into a real pixel.</summary>
+        private int S(int logical)
+        {
+            return (int)Math.Round(logical * _scale);
+        }
+
+        /// <summary>
+        /// Builds a font at the same physical size on any display. GDI+ sizes fonts in
+        /// points, so we convert to pixels against the real DPI and keep the unit explicit;
+        /// that keeps ClearType working instead of letting the compositor stretch a bitmap.
+        /// </summary>
+        private Font MakeFont(float points, FontStyle style)
+        {
+            return new Font("Microsoft YaHei UI", points * 96f / 72f * _scale, style, GraphicsUnit.Pixel);
         }
 
         public void ShowNearTray()
         {
             Rectangle work = Screen.PrimaryScreen.WorkingArea;
-            Location = new Point(work.Right - Width_ - 12, work.Bottom - Height - 12);
+            // Width/Height are real pixels here, so the margin has to be scaled too.
+            Location = new Point(work.Right - Width - S(12), work.Bottom - Height - S(12));
             _shownAt = DateTime.Now;
             Show();
             Activate();
@@ -111,31 +145,31 @@ namespace BattWhale
             using (var border = new Pen(Palette.Border, 1))
                 g.DrawRectangle(border, 0, 0, Width - 1, Height - 1);
 
-            using (var titleFont = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold))
-            using (var smallFont = new Font("Microsoft YaHei UI", 8.5f))
-            using (var nameFont = new Font("Microsoft YaHei UI", 9.5f))
-            using (var boldFont = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold))
+            using (var titleFont = MakeFont(10.5f, FontStyle.Bold))
+            using (var smallFont = MakeFont(8.5f, FontStyle.Regular))
+            using (var nameFont = MakeFont(9.5f, FontStyle.Regular))
+            using (var boldFont = MakeFont(10.5f, FontStyle.Bold))
             using (var text = new SolidBrush(Palette.Text))
             using (var dim = new SolidBrush(Palette.Secondary))
             {
-                g.DrawString(Strings.AppTitle, titleFont, text, 14, 12);
+                g.DrawString(Strings.AppTitle, titleFont, text, S(14), S(12));
                 string summary = _readings.Count == 0 ? Strings.NoDevices : Strings.DeviceCount(_readings.Count);
                 SizeF summarySize = g.MeasureString(summary, smallFont);
-                g.DrawString(summary, smallFont, dim, Width - summarySize.Width - 48, 16);
+                g.DrawString(summary, smallFont, dim, Width - summarySize.Width - S(48), S(16));
                 DrawButton(g, _langButton, Strings.LangButton, false, smallFont);
 
                 if (_readings.Count == 0)
-                    g.DrawString(Strings.NoDevicesHint, smallFont, dim, 14, HeaderHeight + 8);
+                    g.DrawString(Strings.NoDevicesHint, smallFont, dim, S(14), S(HeaderHeight + 8));
 
-                int y = HeaderHeight;
+                int y = S(HeaderHeight);
                 foreach (BatteryReading r in _readings)
                 {
                     DrawRow(g, r, y, nameFont, boldFont, smallFont, text, dim);
-                    y += RowHeight;
+                    y += S(RowHeight);
                 }
 
                 string footer = Strings.Footer(DateTime.Now.ToString("HH:mm:ss"));
-                g.DrawString(footer, smallFont, dim, 14, Height - ActionHeight - FooterHeight + 4);
+                g.DrawString(footer, smallFont, dim, S(14), Height - S(ActionHeight + FooterHeight - 4));
 
                 DrawButton(g, _refreshButton, Strings.Refresh, false, smallFont);
                 DrawButton(g, _intervalButton, Strings.IntervalLabel(IntervalSeconds), false, smallFont);
@@ -153,7 +187,7 @@ namespace BattWhale
 
         private void DrawButton(Graphics g, Rectangle rect, string label, bool active, Font font)
         {
-            using (var path = Rounded(rect, 6))
+            using (var path = Rounded(rect, S(6)))
             {
                 using (var fill = new SolidBrush(active ? Palette.ButtonActiveFill : Palette.ButtonFill))
                     g.FillPath(fill, path);
@@ -182,58 +216,58 @@ namespace BattWhale
         private void DrawRow(Graphics g, BatteryReading r, int y, Font nameFont, Font boldFont, Font smallFont,
                              Brush text, Brush dim)
         {
-            var rowRect = new Rectangle(1, y, Width - 2, RowHeight);
+            var rowRect = new Rectangle(S(1), y, Width - S(2), S(RowHeight));
             using (var rowBrush = new SolidBrush(Palette.Row))
                 g.FillRectangle(rowBrush, rowRect);
             using (var line = new Pen(Palette.RowSeparator))
-                g.DrawLine(line, 14, y + RowHeight - 1, Width - 14, y + RowHeight - 1);
+                g.DrawLine(line, S(14), y + S(RowHeight) - 1, Width - S(14), y + S(RowHeight) - 1);
 
-            DrawKindGlyph(g, r.Kind, new Rectangle(14, y + 12, 26, 26));
+            DrawKindGlyph(g, r.Kind, new Rectangle(S(14), y + S(12), S(26), S(26)));
 
             string percentText = r.Percent >= 0 ? r.Percent + "%" : "—";
             SizeF percentSize = g.MeasureString(percentText, boldFont);
-            g.DrawString(percentText, boldFont, text, Width - percentSize.Width - 16, y + 8);
+            g.DrawString(percentText, boldFont, text, Width - percentSize.Width - S(16), y + S(8));
 
             string name = r.Name.Length > 22 ? r.Name.Substring(0, 21) + "…" : r.Name;
-            g.DrawString(name, nameFont, text, 50, y + 7);
+            g.DrawString(name, nameFont, text, S(50), y + S(7));
 
             string status = r.StatusText;
             SizeF statusSize = g.MeasureString(status, smallFont);
-            g.DrawString(status, smallFont, dim, Width - statusSize.Width - 16, y + 28);
+            g.DrawString(status, smallFont, dim, Width - statusSize.Width - S(16), y + S(28));
 
-            var bar = new Rectangle(50, y + 31, Width - 50 - 70, 7);
+            var bar = new Rectangle(S(50), y + S(31), Width - S(50) - S(70), S(7));
             using (var back = new SolidBrush(Palette.BarTrack))
                 g.FillRectangle(back, bar);
             if (r.Percent > 0)
             {
                 int width = (int)Math.Round(bar.Width * Math.Min(100, r.Percent) / 100.0);
                 using (var fill = new SolidBrush(IconFactory.LevelColor(r.Percent)))
-                    g.FillRectangle(fill, new Rectangle(bar.X, bar.Y, Math.Max(2, width), bar.Height));
+                    g.FillRectangle(fill, new Rectangle(bar.X, bar.Y, Math.Max(S(2), width), bar.Height));
             }
         }
 
-        private static void DrawKindGlyph(Graphics g, DeviceKind kind, Rectangle box)
+        private void DrawKindGlyph(Graphics g, DeviceKind kind, Rectangle box)
         {
-            using (var pen = new Pen(Palette.Glyph, 1.6f))
+            using (var pen = new Pen(Palette.Glyph, 1.6f * _scale))
             using (var brush = new SolidBrush(Palette.GlyphFill))
             {
                 switch (kind)
                 {
                     case DeviceKind.Keyboard:
-                        g.FillRectangle(brush, box.X, box.Y + 6, box.Width, box.Height - 12);
-                        g.DrawRectangle(pen, box.X, box.Y + 6, box.Width, box.Height - 12);
+                        g.FillRectangle(brush, box.X, box.Y + S(6), box.Width, box.Height - S(12));
+                        g.DrawRectangle(pen, box.X, box.Y + S(6), box.Width, box.Height - S(12));
                         break;
                     case DeviceKind.Mouse:
-                        g.FillEllipse(brush, box.X + 6, box.Y, box.Width - 12, box.Height);
-                        g.DrawEllipse(pen, box.X + 6, box.Y, box.Width - 12, box.Height);
+                        g.FillEllipse(brush, box.X + S(6), box.Y, box.Width - S(12), box.Height);
+                        g.DrawEllipse(pen, box.X + S(6), box.Y, box.Width - S(12), box.Height);
                         break;
                     case DeviceKind.Controller:
-                        g.FillRectangle(brush, box.X, box.Y + 5, box.Width, box.Height - 10);
-                        g.DrawRectangle(pen, box.X, box.Y + 5, box.Width, box.Height - 10);
-                        g.DrawEllipse(pen, box.X + 5, box.Y + 11, 6, 6);
+                        g.FillRectangle(brush, box.X, box.Y + S(5), box.Width, box.Height - S(10));
+                        g.DrawRectangle(pen, box.X, box.Y + S(5), box.Width, box.Height - S(10));
+                        g.DrawEllipse(pen, box.X + S(5), box.Y + S(11), S(6), S(6));
                         break;
                     default:
-                        g.DrawEllipse(pen, box.X + 7, box.Y + 7, box.Width - 14, box.Height - 14);
+                        g.DrawEllipse(pen, box.X + S(7), box.Y + S(7), box.Width - S(14), box.Height - S(14));
                         break;
                 }
             }

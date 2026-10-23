@@ -9,28 +9,42 @@ namespace BattWhale
     internal static class Program
     {
         /// <summary>Shown by --help; keep in step with the git tag.</summary>
-        public const string Version = "1.0.2";
+        public const string Version = "1.0.3";
 
         [STAThread]
         private static int Main(string[] args)
         {
+            // Without this, Windows treats us as a 96 dpi app and bitmap-stretches the whole
+            // window to the real scale. That is what makes the panel text look soft on a
+            // 125%/150% display: GDI+ draws 14 px glyphs, then the compositor blows them up.
+            // Declaring awareness hands us real pixels and lets ClearType run at native size.
+            try { SetProcessDPIAware(); }
+            catch (Exception) { }
+
             string command = args.Length > 0 ? args[0].ToLowerInvariant() : "";
 
             // A sandboxed launch (chat file card, IDE, some terminals) hands us a low-integrity
             // token, and UIPI then refuses Shell_NotifyIcon with win32=5 - the app runs but has
-            // no tray icon. Hand the process to a normal-token copy and let this one exit.
-            // At logon the Run key starts us at medium integrity, so this never fires there.
-            if (args.Length == 0 && Integrity.IsLow() && !RecentlyRelaunched())
+            // no tray icon. Windows will not let a low-integrity process spawn a
+            // medium-integrity one, so consenting to elevation is the only way out.
+            //
+            // Always ask. An earlier revision quietly fell back to panel mode here, and that
+            // copy kept holding the single-instance mutex while showing no icon, so every
+            // later launch was handed to it and never got a tray icon either. Leaving is
+            // better than lingering without an icon.
+            if (args.Length == 0 && Integrity.IsLow())
             {
-                DebugLog.Always("低完整性进程 (" + Integrity.Level() + ")，尝试重新拉起");
+                DebugLog.Always("低完整性进程 (" + Integrity.Level() + ")，请求提权以保证托盘图标");
+
                 if (Integrity.RelaunchElevated(Application.ExecutablePath) &&
                     Integrity.WaitForOtherInstance(20000))
+                {
+                    DebugLog.Always("提权拉起成功，本进程退出");
                     return 0;
-                DebugLog.Always("重新拉起没成功，降级为面板模式");
-            }
-            else if (args.Length == 0 && Integrity.IsLow())
-            {
-                DebugLog.Always("低完整性进程，托盘图标可能注册不上: " + Integrity.Level());
+                }
+
+                DebugLog.Always("提权被拒或失败，退出（没有托盘图标就不留着占锁）");
+                return 0;
             }
 
             try
@@ -98,14 +112,7 @@ namespace BattWhale
                 {
                     // Second launch: tell the running copy to pop its panel instead of
                     // nagging with a message box the user cannot act on.
-                    try
-                    {
-                        using (var signal = EventWaitHandle.OpenExisting("BattWhale.ShowPanel"))
-                            signal.Set();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    Integrity.SignalExistingInstance();
                     return 0;
                 }
                 bool signalCreated;
@@ -264,22 +271,8 @@ namespace BattWhale
         [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
 
-        /// <summary>Guards against a relaunch loop if Explorer ever hands the exe back at low integrity.</summary>
-        private static bool RecentlyRelaunched()
-        {
-            try
-            {
-                string marker = System.IO.Path.Combine(Application.StartupPath, "relaunch.marker");
-                if (System.IO.File.Exists(marker) &&
-                    (DateTime.Now - System.IO.File.GetLastWriteTime(marker)).TotalSeconds < 10)
-                    return true;
-                System.IO.File.WriteAllText(marker, DateTime.Now.ToString("O"));
-            }
-            catch (Exception)
-            {
-            }
-            return false;
-        }
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
 
         private static void LogFatal(Exception ex)
         {

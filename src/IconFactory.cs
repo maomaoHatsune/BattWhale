@@ -27,13 +27,17 @@ namespace BattWhale
                     charging = true;
             }
 
-            using (var bmp = new Bitmap(32, 32, PixelFormat.Format32bppArgb))
+            // Draw at the real pixel size, not 32x32 stretched by the shell: a 150% display
+            // asks the tray for a 48 px icon, and handing it a 32 px bitmap blurs it.
+            float scale = DpiScale();
+            using (var bmp = new Bitmap(S(32, scale), S(32, scale), PixelFormat.Format32bppArgb))
             {
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     g.Clear(Color.Transparent);
-                    DrawBattery(g, new Rectangle(4, 9, 22, 14), level, charging, lightBackground);
+                    DrawBattery(g, new Rectangle(S(4, scale), S(9, scale), S(22, scale), S(14, scale)),
+                                level, charging, lightBackground, scale);
                 }
                 return ToIcon(bmp);
             }
@@ -41,29 +45,51 @@ namespace BattWhale
 
         public static Icon BuildDeviceIcon(DeviceKind kind, int percent, BatteryState state, bool lightBackground)
         {
-            using (var bmp = new Bitmap(16, 16, PixelFormat.Format32bppArgb))
+            float scale = DpiScale();
+            using (var bmp = new Bitmap(S(16, scale), S(16, scale), PixelFormat.Format32bppArgb))
             {
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     g.Clear(Color.Transparent);
-                    DrawBattery(g, new Rectangle(1, 4, 12, 8), percent, state == BatteryState.Charging, lightBackground);
+                    DrawBattery(g, new Rectangle(S(1, scale), S(4, scale), S(12, scale), S(8, scale)),
+                                percent, state == BatteryState.Charging, lightBackground, scale);
                 }
                 return ToIcon(bmp);
             }
         }
 
-        public static void DrawBattery(Graphics g, Rectangle body, int percent, bool charging, bool lightBackground)
+        private static float DpiScale()
+        {
+            try
+            {
+                using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+                    return g.DpiX / 96f;
+            }
+            catch (Exception)
+            {
+                return 1f;
+            }
+        }
+
+        private static int S(int logical, float scale)
+        {
+            return Math.Max(1, (int)Math.Round(logical * scale));
+        }
+
+        public static void DrawBattery(Graphics g, Rectangle body, int percent, bool charging,
+                                       bool lightBackground, float scale)
         {
             Color color = LevelColor(percent);
             Color outlineColor = lightBackground ? Color.FromArgb(48, 52, 58) : Color.FromArgb(245, 245, 245);
-            int tipWidth = Math.Max(2, body.Width / 7);
+            int tipWidth = Math.Max(S(2, scale), body.Width / 7);
             var tip = new Rectangle(body.Right, body.Top + body.Height / 3, tipWidth, body.Height / 3);
-            using (var outline = new Pen(outlineColor, 1.6f))
+            using (var outline = new Pen(outlineColor, 1.6f * scale))
             using (var fill = new SolidBrush(color))
             using (var tipBrush = new SolidBrush(outlineColor))
             {
-                var inner = new Rectangle(body.X + 2, body.Y + 2, body.Width - 4, body.Height - 4);
+                var inner = new Rectangle(body.X + S(2, scale), body.Y + S(2, scale),
+                                          body.Width - S(4, scale), body.Height - S(4, scale));
                 g.FillRectangle(tipBrush, tip);
                 if (percent > 0)
                 {
@@ -75,7 +101,10 @@ namespace BattWhale
                 {
                     using (var dot = new SolidBrush(lightBackground
                         ? Color.FromArgb(110, 116, 124) : Color.FromArgb(200, 205, 210)))
-                        g.FillEllipse(dot, inner.X + inner.Width / 2 - 2, inner.Y + inner.Height / 2 - 2, 4, 4);
+                        g.FillEllipse(dot,
+                            inner.X + inner.Width / 2 - S(2, scale),
+                            inner.Y + inner.Height / 2 - S(2, scale),
+                            S(4, scale), S(4, scale));
                 }
             }
         }

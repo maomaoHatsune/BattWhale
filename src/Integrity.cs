@@ -64,21 +64,16 @@ namespace BattWhale
             return level == "low" || level == "untrusted";
         }
 
-        /// <summary>Starts the exe again through Explorer, which gives it a normal token.</summary>
-        public static bool RelaunchThroughExplorer(string exePath)
-        {
-            try
-            {
-                Process.Start("explorer.exe", "\"" + exePath + "\"");
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        /// <summary>Last resort: ask for elevation, which always leaves the low-integrity box.</summary>
+        /// <summary>
+        /// Do not try to hand the exe to Explorer as a way around elevation. Both variants
+        /// were measured and both fail, because Windows will not let a low-integrity process
+        /// produce a medium-integrity one:
+        ///   * Process.Start("explorer.exe", exe) forks a second explorer.exe that inherits
+        ///     our low token and dies with 0xc0000142 while initialising shell32;
+        ///   * Shell.Application.ShellExecute does start a copy, but Explorer runs it under
+        ///     the caller's low token, so Shell_NotifyIcon still fails with win32=5.
+        /// Elevation is the only exit, and it needs the user's consent.
+        /// </summary>
         public static bool RelaunchElevated(string exePath)
         {
             try
@@ -92,6 +87,20 @@ namespace BattWhale
             catch (Exception)
             {
                 return false;
+            }
+        }
+
+        /// <summary>Tells the running copy to show its panel.</summary>
+        public static void SignalExistingInstance()
+        {
+            try
+            {
+                using (System.Threading.EventWaitHandle signal =
+                       System.Threading.EventWaitHandle.OpenExisting("BattWhale.ShowPanel"))
+                    signal.Set();
+            }
+            catch (Exception)
+            {
             }
         }
 
